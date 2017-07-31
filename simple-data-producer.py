@@ -10,6 +10,8 @@ import random
 import schedule
 import time
 import confluent_kafka
+from confluent_kafka import avro
+from confluent_kafka.avro import AvroProducer
 
 # - default kafka topic to write to
 topic_name = 'stock-analyzer'
@@ -23,6 +25,8 @@ logging.basicConfig(format=logger_format)
 logger = logging.getLogger('data-producer')
 logger.setLevel(logging.DEBUG)
 
+value_schema = avro.load('ValueSchema.avsc')
+value = {"name": "Value"}
 
 def fetch_price(producer, symbol):
     """
@@ -33,14 +37,16 @@ def fetch_price(producer, symbol):
     """
     logger.debug('Start to fetch stock price for %s', symbol)
     try:
-        price = json.dumps(getQuotes(symbol))
+        price = getQuotes(symbol)[0]
 
         # price = random.randint(30, 120)
         # timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%MZ')
         # payload = ('[{"StockSymbol":"AAPL","LastTradePrice":%d,"LastTradeDateTime":"%s"}]' % (price, timestamp)).encode('utf-8')
 
         logger.debug('Retrieved stock info %s', price)
-	producer.produce(topic_name, value=price.encode('utf-8'))
+	# producer.produce(topic_name, value=price.encode('utf-8'))
+	producer.produce(topic=topic_name, value=price)
+	producer.flush()
         # producer.send(topic=topic_name, value=price, timestamp_ms=time.time())
         logger.debug('Sent stock price for %s to Kafka', symbol)
     except KafkaTimeoutError as timeout_error:
@@ -75,18 +81,22 @@ if __name__ == '__main__':
     parser.add_argument('symbol', help='the symbol of the stock to collect')
     parser.add_argument('topic_name', help='the kafka topic push to')
     parser.add_argument('kafka_broker', help='the location of the kafka broker')
+    parser.add_argument('schema_url', help='the schema registry url')  
 
     # - parse arguments
     args = parser.parse_args()
     symbol = args.symbol
     topic_name = args.topic_name
     kafka_broker = args.kafka_broker
-
+    schema_url = args.schema_url
+    
     # - instantiate a simple kafka producer
-    conf = {
-        'bootstrap.servers': kafka_broker
-    }
-    producer = confluent_kafka.Producer(**conf)
+    # conf = {
+    #    'bootstrap.servers': kafka_broker
+    #}
+    #producer = confluent_kafka.Producer(**conf)
+    producer = AvroProducer({'bootstrap.servers': kafka_broker, 'schema.registry.url': schema_url}, default_value_schema=value_schema)
+    
 
     # - schedule and run the fetch_price function every second
     schedule.every(1).second.do(fetch_price, producer, symbol)
