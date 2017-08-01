@@ -1,0 +1,15 @@
+{
+ "namespace": "stock",
+ "type": "record",
+ "name": "StockPrice",
+ "fields": [
+     {"name": "Index", "type": "string"},
+     {"name": "LastTradeWithCurrency", "type": "string"},
+     {"name": "LastTradeDateTime", "type": "string"},
+     {"name": "LastTradePrice", "type": "string"},
+     {"name": "LastTradeTime", "type": "string"},
+     {"name": "LastTradeDateTimeLong", "type": "string"},
+     {"name": "StockSymbol", "type": "string"},
+     {"name": "ID", "type": "string"}
+ ]
+}
